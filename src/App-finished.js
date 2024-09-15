@@ -1,4 +1,4 @@
-import { useReducer } from "react";
+import { act, useReducer } from "react";
 import "./styles.css";
 import { type } from "@testing-library/user-event/dist/type";
 
@@ -19,11 +19,11 @@ You can check this right at the beginning of the reducer
 5. Customer can only request a loan if there is no loan yet. If that condition is met, the requested amount will be registered in the 'loan' state, 
 and it will be added to the balance. If the condition is not met, just return the current state
 
-6. When the customer pays the loan, the opposite happens: the money is taken from the balance, and the 'loan' will get back to 0. This can lead to negative balances, 
-but that's no problem, because the customer can't close their account now (see next point)
+6. When the customer pays the loan, the opposite happens: the money is taken from the balance, and the 'loan' will get back to 0. 
+This can lead to negative balances, but that's no problem, because the customer can't close their account now (see next point)
 
-7. Customer can only close an account if there is no loan, AND if the balance is zero. If this condition is not met, just return the state. If the condition is met, 
-the account is deactivated and all money is withdrawn. The account basically gets back to the initial state
+7. Customer can only close an account if there is no loan, AND if the balance is zero. If this condition is not met, just return the state. 
+If the condition is met, the account is deactivated and all money is withdrawn. The account basically gets back to the initial state
 */
 
 const initialState = {
@@ -33,27 +33,36 @@ const initialState = {
 };
 
 function reducer(state, action) {
+  console.log(state);
+  if (!state.isActive && action.type !== "start") return state;
   switch (action.type) {
-    case "open":
-      return { ...state, balance: 500, isActive: true };
+    case "start":
+      return { ...state, isActive: true, balance: 500 };
     case "deposit":
       return { ...state, balance: state.balance + action.payload };
     case "withdraw":
-      return { ...state, balance: state.balance - action.payload };
-    case "requestLoan":
+      return {
+        ...state,
+        balance: state.balance - action.payload,
+      };
+    case "get_loan":
       if (state.loan > 0) return state;
       return {
         ...state,
         loan: action.payload,
         balance: state.balance + action.payload,
       };
-    case "payLoan":
-      return { ...state, balance: state.balance - state.loan, loan: 0 };
+    case "pay_loan":
+      return {
+        ...state,
+        loan: 0,
+        balance: state.balance - state.loan,
+      };
     case "close":
-      if (state.loan > 0 || state.balance > 0) return state;
+      if (state.balance !== 0 || state.loan > 0) return state;
       return { initialState };
     default:
-      throw new Error("Unknown action");
+      throw new Error("Action unknown");
   }
 }
 
@@ -62,6 +71,7 @@ export default function App() {
     reducer,
     initialState
   );
+  // console.log(dispatch);
   return (
     <div className="App">
       <h1>useReducer Bank Account</h1>
@@ -69,7 +79,7 @@ export default function App() {
       <p>Loan: {loan}</p>
 
       <p>
-        <button onClick={() => dispatch({ type: "open" })} disabled={isActive}>
+        <button onClick={() => dispatch({ type: "start" })} disabled={isActive}>
           Open account
         </button>
       </p>
@@ -91,7 +101,7 @@ export default function App() {
       </p>
       <p>
         <button
-          onClick={() => dispatch({ type: "requestLoan", payload: 5000 })}
+          onClick={() => dispatch({ type: "get_loan", payload: 5000 })}
           disabled={!isActive}
         >
           Request a loan of 5000
@@ -99,7 +109,7 @@ export default function App() {
       </p>
       <p>
         <button
-          onClick={() => dispatch({ type: "payLoan" })}
+          onClick={() => dispatch({ type: "pay_loan" })}
           disabled={!isActive}
         >
           Pay loan
